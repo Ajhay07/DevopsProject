@@ -1,0 +1,62 @@
+name: ClusterBalancer CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-and-test:
+    name: Build, Lint, and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install flake8 pyyaml pytest pytest-cov
+
+      - name: Syntax and Lint Validation
+        run: |
+          # Stop build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=venv,.git
+          # Treat warnings as non-fatal but report them
+          flake8 . --count --exit-zero --max-complexity=15 --max-line-length=120 --statistics --exclude=venv,.git
+
+      - name: Validate YAML Configurations
+        run: |
+          python -c "
+          import yaml, glob
+          yaml_files = glob.glob('**/*.yaml', recursive=True) + glob.glob('**/*.yml', recursive=True)
+          for yf in yaml_files:
+              with open(yf, 'r', encoding='utf-8') as f:
+                  list(yaml.safe_load_all(f))
+              print(f'Validated: {yf}')
+          print(f'Successfully validated {len(yaml_files)} YAML manifests.')
+          "
+
+      - name: Execute Unit and Decision Tests
+        run: |
+          pytest tests/ -v --junitxml=test-results.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: test-results.xml
+
+      - name: Build Docker Image (Dry-Run / Verification)
+        run: |
+          docker build -t clusterbalancer:ci .

@@ -1,0 +1,40 @@
+# ClusterBalancer Configuration File
+cluster:
+  kubeconfig_path: null  # null defaults to ~/.kube/config or in-cluster service account
+  context: null
+
+thresholds:
+  cpu_overload_percent: 75.0      # Nodes with CPU >= this are OVERLOADED
+  cpu_underutilized_percent: 30.0 # Nodes with CPU <= this are UNDERUTILIZED
+  cpu_imbalance_delta: 25.0       # Imbalance flagged when max_cpu - min_cpu >= delta
+  memory_overload_percent: 80.0   # Memory overload percentage
+  memory_underutilized_percent: 30.0
+
+engine:
+  monitoring_interval: 10          # Seconds between monitoring cycles
+  consecutive_samples: 2           # Consecutive samples required before rebalancing
+  cooldown_seconds: 60             # Seconds to wait between rebalance operations
+  max_evictions_per_cycle: 1       # Maximum pods evicted per cycle
+  mode: "recommend"                # Default mode: 'recommend' or 'automatic'
+
+safeguards:
+  exclude_namespaces:
+    - "kube-system"
+    - "kube-public"
+    - "kube-node-lease"
+    - "kubernetes-dashboard"
+  exclude_pod_patterns:
+    - "metrics-server"
+    - "coredns"
+    - "kube-proxy"
+    - "calico"
+    - "flannel"
+  exclude_daemonsets: true         # Never evict DaemonSet pods
+  exclude_unmanaged_pods: true     # Never evict pods without controller (Deployment/ReplicaSet)
+  respect_pdb: true                # Check PodDisruptionBudget before eviction
+  prevent_immediate_rescheduling: true # Apply safe temporary cordon on source during eviction
+
+logging:
+  level: "INFO"
+  log_file: "logs/clusterbalancer.log"
+  metrics_csv: "logs/metrics_history.csv"

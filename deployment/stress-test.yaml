@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: targeted-cpu-stress
+  namespace: default
+  labels:
+    app: targeted-cpu-stress
+    scenario: uneven-load
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: targeted-cpu-stress
+  template:
+    metadata:
+      labels:
+        app: targeted-cpu-stress
+    spec:
+      containers:
+      - name: stress
+        image: polinux/stress
+        command: ["stress"]
+        args: ["--cpu", "2", "--timeout", "1800s"]
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "64Mi"
+          limits:
+            cpu: "500m"
+            memory: "128Mi"
+      # Optional: nodeSelector can be uncommented to pin load specifically to worker node 2
+      # nodeSelector:
+      #   kubernetes.io/hostname: minikube-m02
